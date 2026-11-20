@@ -14,4 +14,11 @@
 // These values are not secret — your data is protected by the Firestore rules
 // in firestore.rules (each signed-in user can only read and write their own links).
 
-export const FIREBASE_CONFIG = null;
+export const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDFleZKQwdd4yB7McsexcaptVKijXf03yQ",
+  authDomain: "linkshelf-776b8.firebaseapp.com",
+  projectId: "linkshelf-776b8",
+  storageBucket: "linkshelf-776b8.firebasestorage.app",
+  messagingSenderId: "458048059059",
+  appId: "1:458048059059:web:12e3b602e40ffbd70762c6"
+};
