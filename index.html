@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Linkshelf</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23e7b25e'/><path d='M9 9h4v14H9zM15 9h4v14h-4zM21 10l3.5-1 3 13-3.5 1z' fill='%231a1408'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #13161c; --surface: #1b1f27; --surface-2: #232934; --line: #2c3240;
+  --fg: #ece6da; --muted: #9a9688; --accent: #e7b25e; --accent-ink: #1a1408;
+  --danger: #e57a6a; --ok: #8fc79a; --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --display: "Instrument Serif", Georgia, serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f6f3ec; --surface: #fffdf8; --surface-2: #f0ebe0; --line: #e1dacb;
+    --fg: #1f1d19; --muted: #6f6a5e; --accent: #b9791b; --accent-ink: #fff;
+    --danger: #b8432f; --ok: #3d8a4f; --shadow: 0 10px 30px rgba(60,40,10,.12); color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f6f3ec; --surface: #fffdf8; --surface-2: #f0ebe0; --line: #e1dacb;
+  --fg: #1f1d19; --muted: #6f6a5e; --accent: #b9791b; --accent-ink: #fff;
+  --danger: #b8432f; --ok: #3d8a4f; --shadow: 0 10px 30px rgba(60,40,10,.12); color-scheme: light;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; }
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.primary:hover { filter: brightness(1.06); }
+button.ghost { border-color: transparent; }
+button.ghost:hover { background: var(--surface-2); }
+button.danger { color: var(--danger); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input, select, textarea { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%; outline: none; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+a { color: inherit; }
+
+.app { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: 100%; }
+
+/* Sidebar */
+aside { position: sticky; top: 0; height: 100vh; overflow-y: auto; background: var(--surface); border-right: 1px solid var(--line); padding: 20px 12px 16px; display: flex; flex-direction: column; gap: 14px; }
+.brand { font: 400 32px/1 var(--display); padding: 0 8px; letter-spacing: -.01em; }
+.brand em { color: var(--accent); }
+.nav { display: grid; gap: 2px; }
+.nav button, .row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 7px 8px; font-weight: 500; }
+.nav button:hover, .row:hover { background: var(--surface-2); }
+.nav button.sel, .row.sel { background: var(--surface-2); color: var(--accent); }
+.n { margin-left: auto; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.side-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 0; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.side-head button { padding: 4px 9px; font-size: 12px; letter-spacing: 0; text-transform: none; }
+.tree { display: grid; gap: 1px; flex: 1; align-content: start; min-height: 60px; }
+.row { padding-left: calc(4px + var(--d, 0) * 16px); cursor: pointer; position: relative; }
+.row .tw { width: 18px; height: 18px; padding: 0; border: 0; display: grid; place-items: center; color: var(--muted); font-size: 11px; flex: none; transition: transform .15s; }
+.row .tw.open { transform: rotate(90deg); }
+.row .ic { flex: none; width: 20px; text-align: center; }
+.row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .act { padding: 0 6px; height: 22px; border: 0; font-size: 15px; line-height: 1; color: var(--muted); display: none; }
+.row .act:hover { color: var(--fg); background: var(--line); }
+.row:hover .act, .row:focus-within .act { display: inline-block; }
+.row:hover .n { display: none; }
+.drop-ok { outline: 2px dashed var(--accent); outline-offset: -2px; background: var(--surface-2) !important; }
+.root-drop { border: 1px dashed var(--line); border-radius: 8px; padding: 8px; font-size: 12px; color: var(--muted); text-align: center; display: none; }
+body.dragging-group .root-drop { display: block; }
+.side-foot { border-top: 1px solid var(--line); padding: 12px 8px 0; display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+.acct { display: flex; align-items: center; gap: 8px; }
+.acct img { width: 26px; height: 26px; border-radius: 50%; }
+.acct .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; color: var(--fg); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--ok); }
+.foot-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.foot-btns button { padding: 6px 10px; font-size: 12px; }
+
+/* Main */
+main { padding: 0 28px 64px; min-width: 0; }
+.top { position: sticky; top: 0; z-index: 5; background: var(--bg); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 18px 0 14px; border-bottom: 1px solid var(--line); }
+.menu-btn { display: none; }
+.titles { flex: 1 1 260px; min-width: 0; }
+.crumbs { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px; }
+.crumbs button { border: 0; padding: 0; font-weight: 500; font-size: 13px; color: var(--muted); }
+.crumbs button:hover { color: var(--accent); }
+h1 { font: 400 clamp(1.9rem, 4vw, 2.6rem)/1.05 var(--display); margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.search { width: 220px; }
+.tools select { width: auto; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 8px 10px; }
+.seg button.on { background: var(--surface-2); color: var(--accent); }
+
+.quick { display: flex; gap: 8px; margin: 18px 0 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 6px; }
+.quick:focus-within { border-color: var(--accent); }
+.quick input { border: 0; background: transparent; padding: 10px 12px; }
+.quick-help { margin: 0 0 18px; font-size: 13px; color: var(--muted); }
+.quick-help b { color: var(--fg); font-weight: 600; }
+
+.sec-label { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 22px 0 10px; display: flex; align-items: center; gap: 12px; }
+.sec-label label { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.sec-label input { width: auto; }
+
+.folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.folder { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0; overflow: hidden; text-align: left; font-weight: 500; display: block; width: 100%; }
+.folder:hover { border-color: var(--accent); }
+.mosaic { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; aspect-ratio: 16/9; gap: 2px; background: var(--line); }
+.mosaic > * { background: var(--surface-2); width: 100%; height: 100%; object-fit: cover; min-height: 0; }
+.mosaic.empty { display: grid; place-items: center; grid-template-columns: 1fr; grid-template-rows: 1fr; font-size: 34px; background: var(--surface-2); }
+.folder .fm { padding: 10px 12px; display: flex; gap: 8px; align-items: center; }
+.folder .fm span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
+.card:hover { border-color: var(--muted); }
+.card.flash { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.card.dragging { opacity: .4; }
+.thumb { position: relative; display: block; aspect-ratio: 16/9; background: var(--surface-2); overflow: hidden; cursor: pointer; border: 0; padding: 0; width: 100%; border-radius: 0; }
+.thumb img.cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .3s; }
+.card:hover .thumb img.cover { transform: scale(1.03); }
+.thumb .ph { position: absolute; inset: 0; display: grid; place-items: center; align-content: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.thumb .ph img { width: 40px; height: 40px; border-radius: 8px; }
+.thumb .play { position: absolute; inset: auto 10px 10px auto; background: rgba(0,0,0,.65); color: #fff; font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+.thumb .seen { position: absolute; top: 10px; left: 10px; background: var(--ok); color: #10200f; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 6px; }
+.meta { padding: 12px 14px 4px; flex: 1; display: grid; gap: 4px; align-content: start; }
+.meta h3 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.meta .sub { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; align-items: center; min-width: 0; }
+.meta .sub img { width: 14px; height: 14px; border-radius: 3px; flex: none; }
+.meta .sub span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta .path { font-size: 12px; color: var(--accent); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta .note { margin: 2px 0 0; font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.tag { font-size: 11.5px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); cursor: pointer; }
+.tag:hover { color: var(--accent); border-color: var(--accent); }
+.acts { display: flex; gap: 2px; padding: 6px 8px 8px; }
+.acts button { border: 0; padding: 6px 8px; font-size: 13px; color: var(--muted); font-weight: 500; }
+.acts button:hover { background: var(--surface-2); color: var(--fg); }
+.acts button.on { color: var(--accent); }
+.acts .spacer { flex: 1; }
+
+.grid.list { grid-template-columns: 1fr; gap: 8px; }
+.grid.list .card { flex-direction: row; align-items: center; }
+.grid.list .thumb { width: 168px; flex: none; }
+.grid.list .meta { padding: 8px 14px; }
+.grid.list .note { -webkit-line-clamp: 1; }
+
+.empty { text-align: center; padding: 70px 16px; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; margin-top: 18px; }
+.empty h2 { font: 400 30px/1.1 var(--display); color: var(--fg); margin: 0 0 8px; }
+
+.banner { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 10px; padding: 12px 14px; font-size: 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.banner p { margin: 0; flex: 1 1 300px; }
+
+/* Dialogs */
+dialog { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 32px)); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(0,0,0,.55); }
+dialog form { padding: 20px; display: grid; gap: 14px; }
+dialog h2 { margin: 0; font: 400 28px/1.1 var(--display); }
+.field { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.field small { font-weight: 400; }
+.dlg-thumb { aspect-ratio: 16/9; border-radius: 10px; overflow: hidden; background: var(--surface-2); }
+.dlg-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dlg-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.dlg-btns .left { margin-right: auto; }
+.two { display: grid; grid-template-columns: 90px 1fr; gap: 10px; }
+
+/* Player */
+.player { position: fixed; inset: 0; z-index: 50; background: rgba(5,6,8,.92); display: grid; grid-template-rows: auto 1fr auto; padding: 14px; gap: 12px; }
+.player .bar { display: flex; gap: 10px; align-items: center; color: #ece6da; }
+.player .bar h2 { font: 400 24px/1.15 var(--display); margin: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player button, .player a.btn { color: #ece6da; border-color: #3a4150; text-decoration: none; border: 1px solid #3a4150; border-radius: 8px; padding: 8px 12px; font-weight: 600; font-size: 14px; }
+.player .stage { display: grid; place-items: center; min-height: 0; }
+.player iframe { width: min(100%, calc((100vh - 150px) * 16 / 9)); aspect-ratio: 16/9; border: 0; border-radius: 10px; background: #000; }
+.player .ctrl { display: flex; justify-content: center; gap: 10px; }
+
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 600; font-size: 14px; z-index: 60; box-shadow: var(--shadow); max-width: calc(100vw - 32px); }
+.toast.err { background: var(--danger); color: #fff; }
+.scrim { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  aside { position: fixed; z-index: 40; left: 0; top: 0; width: min(300px, 86vw); transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow); }
+  body.side-open aside { transform: none; }
+  body.side-open .scrim { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.5); }
+  main { padding: 0 16px 64px; }
+  .menu-btn { display: inline-block; }
+  .search { width: 100%; }
+  .tools { width: 100%; }
+  .tools .search { flex: 1; width: auto; }
+  .grid.list .thumb { width: 120px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="side" aria-label="Groups">
+    <div class="brand">Link<em>shelf</em></div>
+    <nav class="nav" id="nav">
+      <button data-view="all">🗂️ <span>All links</span><span class="n" id="cAll"></span></button>
+      <button data-view="unsorted">📥 <span>Unsorted</span><span class="n" id="cUns"></span></button>
+      <button data-view="fav">⭐ <span>Favorites</span><span class="n" id="cFav"></span></button>
+      <button data-view="unwatched">👀 <span>Not opened yet</span><span class="n" id="cNew"></span></button>
+    </nav>
+    <div class="side-head">Groups <button id="newGroup" title="New top-level group">+ New</button></div>
+    <div class="tree" id="tree"></div>
+    <div class="root-drop" id="rootDrop">Drop here to make it a top-level group</div>
+    <div class="side-foot">
+      <div class="acct" id="acct"></div>
+      <div class="foot-btns">
+        <button id="importBtn">Import</button>
+        <button id="exportBtn">Export backup</button>
+        <button id="themeBtn" title="Switch light / dark">◐ Theme</button>
+      </div>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main>
+    <div class="top">
+      <button class="menu-btn" id="menuBtn" aria-label="Open groups">☰</button>
+      <div class="titles">
+        <div class="crumbs" id="crumbs"></div>
+        <h1 id="title">All links</h1>
+      </div>
+      <div class="tools">
+        <input class="search" id="search" type="search" placeholder="Search everything…  ( / )" autocomplete="off">
+        <select id="sort" aria-label="Sort">
+          <option value="new">Newest first</option>
+          <option value="old">Oldest first</option>
+          <option value="az">Title A–Z</option>
+          <option value="site">By website</option>
+        </select>
+        <div class="seg" role="group" aria-label="Layout">
+          <button id="vGrid" title="Grid">▦</button><button id="vList" title="List">☰</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="banner"></div>
+
+    <form class="quick" id="quick">
+      <input id="quickInput" placeholder="Paste a link (or many) — YouTube, articles, anything…" autocomplete="off">
+      <button class="primary" type="submit">Add</button>
+    </form>
+    <p class="quick-help" id="quickHelp"></p>
+
+    <div id="folderWrap" hidden>
+      <div class="sec-label">Subgroups</div>
+      <div class="folders" id="folders"></div>
+    </div>
+    <div class="sec-label" id="linksLabel"><span id="linksLabelText">Links</span>
+      <label id="deepWrap" hidden><input type="checkbox" id="deep"> Include subgroups</label>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="empty" id="empty" hidden></div>
+  </main>
+</div>
+
+<!-- Link dialog -->
+<dialog id="linkDlg">
+  <form method="dialog" id="linkForm">
+    <h2>Edit link</h2>
+    <div class="dlg-thumb" id="ldThumb"></div>
+    <label class="field">Title <input id="ldTitle" required></label>
+    <label class="field">Link <input id="ldUrl" type="url" required></label>
+    <label class="field">Group <select id="ldGroup"></select></label>
+    <label class="field">Note <textarea id="ldNote" rows="3" placeholder="Why you saved it, timestamps, anything…"></textarea></label>
+    <label class="field">Tags <small>comma separated</small><input id="ldTags" placeholder="tutorial, music, later"></label>
+    <label class="field">Custom thumbnail <small>optional image link — leave blank for automatic</small><input id="ldThumbUrl" type="url"></label>
+    <div class="dlg-btns">
+      <button type="button" class="danger left" id="ldDelete">Delete</button>
+      <button type="button" class="ghost" id="ldRefresh" title="Fetch title and thumbnail again">↻ Refetch</button>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button class="primary" value="ok">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Group dialog -->
+<dialog id="groupDlg">
+  <form method="dialog" id="groupForm">
+    <h2 id="gdHead">New group</h2>
+    <div class="two">
+      <label class="field">Icon <input id="gdIcon" maxlength="4" placeholder="📁"></label>
+      <label class="field">Name <input id="gdName" required placeholder="e.g. Cooking"></label>
+    </div>
+    <label class="field">Inside <select id="gdParent"></select></label>
+    <div class="dlg-btns">
+      <button type="button" class="danger left" id="gdDelete">Delete group</button>
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button class="primary" value="ok">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Import dialog -->
+<dialog id="importDlg">
+  <form method="dialog" id="importForm">
+    <h2>Import links</h2>
+    <p style="margin:0;color:var(--muted);font-size:14px">Paste any text with links in it, a Linkshelf backup, or your old <b>Quiet Reel</b> data. You can also pick a backup file.</p>
+    <label class="field">Paste here <textarea id="imText" rows="7" placeholder="https://youtu.be/…&#10;https://…"></textarea></label>
+    <label class="field">…or choose a file <input type="file" id="imFile" accept=".json,.txt,.html,.htm"></label>
+    <label class="field">Put plain links into <select id="imGroup"></select></label>
+    <div class="dlg-btns">
+      <button value="cancel" formnovalidate>Cancel</button>
+      <button class="primary" value="ok">Import</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Player -->
+<div class="player" id="player" hidden>
+  <div class="bar">
+    <h2 id="plTitle"></h2>
+    <a class="btn" id="plOpen" target="_blank" rel="noopener">Open on YouTube ↗</a>
+    <button id="plClose">Close ✕</button>
+  </div>
+  <div class="stage"><iframe id="plFrame" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
+  <div class="ctrl"><button id="plPrev">← Previous</button><button id="plNext">Next →</button></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script type="module">
+import { FIREBASE_CONFIG } from "./config.js";
+
+/* ---------- state ---------- */
+const LOCAL_KEY = "linkshelf.v1";
+const PREFS_KEY = "linkshelf.prefs";
+const state = { groups: new Map(), links: new Map() };
+const prefs = Object.assign({ view: "all", sort: "new", layout: "grid", deep: false, collapsed: [], theme: "" }, readJSON(PREFS_KEY) || {});
+let collapsed = new Set(prefs.collapsed);
+let mode = "local";      // "local" | "cloud"
+let cloud = null;        // firebase handles when signed in
+let query = "";
+let visibleIds = [];     // current card order (for player prev/next)
+
+function readJSON(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function writeJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+function savePrefs() { prefs.collapsed = [...collapsed]; writeJSON(PREFS_KEY, prefs); }
+function loadLocal() {
+  const d = readJSON(LOCAL_KEY) || { groups: [], links: [] };
+  state.groups = new Map((d.groups || []).map(g => [g.id, g]));
+  state.links = new Map((d.links || []).map(l => [l.id, l]));
+}
+function saveLocal() { writeJSON(LOCAL_KEY, { groups: [...state.groups.values()], links: [...state.links.values()] }); }
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const clean = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- storage (local or Firestore) ---------- */
+async function put(kind, obj) {
+  obj = clean(obj);
+  state[kind].set(obj.id, obj);
+  render();
+  if (mode === "cloud") {
+    try { await cloud.fs.setDoc(cloud.fs.doc(cloud.db, "users", cloud.user.uid, kind, obj.id), obj); }
+    catch (e) { toast("Could not save to the cloud: " + e.message, "err"); }
+  } else saveLocal();
+}
+async function del(kind, id) {
+  state[kind].delete(id);
+  render();
+  if (mode === "cloud") {
+    try { await cloud.fs.deleteDoc(cloud.fs.doc(cloud.db, "users", cloud.user.uid, kind, id)); }
+    catch (e) { toast("Could not delete in the cloud: " + e.message, "err"); }
+  } else saveLocal();
+}
+async function putMany(items) { // items: [kind, obj, isDelete?]
+  for (const [kind, obj, isDel] of items) isDel ? state[kind].delete(obj.id) : state[kind].set(obj.id, clean(obj));
+  render();
+  if (mode !== "cloud") return saveLocal();
+  const { fs, db, user } = cloud;
+  for (let i = 0; i < items.length; i += 400) {
+    const b = fs.writeBatch(db);
+    for (const [kind, obj, isDel] of items.slice(i, i + 400)) {
+      const ref = fs.doc(db, "users", user.uid, kind, obj.id);
+      isDel ? b.delete(ref) : b.set(ref, clean(obj));
+    }
+    try { await b.commit(); } catch (e) { toast("Cloud save failed: " + e.message, "err"); }
+  }
+}
+
+/* ---------- link parsing & metadata ---------- */
+function ytId(input) {
+  const s = String(input || "").trim();
+  if (/^[\w-]{11}$/.test(s)) return s;
+  let u; try { u = new URL(/^https?:/i.test(s) ? s : "https://" + s); } catch { return null; }
+  const host = u.hostname.replace(/^(www|m|music)\./, "");
+  if (host === "youtu.be") return (u.pathname.split("/")[1] || "").match(/^[\w-]{11}$/)?.[0] || null;
+  if (host === "youtube.com" || host === "youtube-nocookie.com") {
+    const v = u.searchParams.get("v"); if (v && /^[\w-]{11}$/.test(v)) return v;
+    const m = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([\w-]{11})/); if (m) return m[1];
+  }
+  return null;
+}
+function extractUrls(text) {
+  const found = String(text).match(/https?:\/\/[^\s<>"'`]+/gi) || [];
+  let urls = found.map(u => u.replace(/[),.;!?\]]+$/, ""));
+  if (!urls.length) {
+    const t = String(text).trim();
+    if (/^[\w-]{11}$/.test(t)) urls = ["https://www.youtube.com/watch?v=" + t];
+    else if (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(t)) urls = ["https://" + t];
+  }
+  return [...new Set(urls)];
+}
+const hostOf = url => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } };
+const favicon = url => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostOf(url))}&sz=64`;
+function canonical(url) {
+  const id = ytId(url);
+  if (id) return "yt:" + id;
+  try { const u = new URL(url); u.hash = ""; return u.toString().replace(/\/$/, ""); } catch { return url; }
+}
+function thumbOf(l) {
+  if (l.thumb) return l.thumb;
+  const id = ytId(l.url);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : "";
+}
+async function fetchJSON(url, ms = 8000) {
+  const c = new AbortController(); const t = setTimeout(() => c.abort(), ms);
+  try { const r = await fetch(url, { signal: c.signal }); return r.ok ? await r.json() : null; }
+  catch { return null; } finally { clearTimeout(t); }
+}
+async function fetchMeta(url) {
+  const id = ytId(url);
+  if (id) {
+    const watch = "https://www.youtube.com/watch?v=" + id;
+    const d = await fetchJSON("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent(watch))
+           || await fetchJSON("https://noembed.com/embed?url=" + encodeURIComponent(watch));
+    return d && d.title ? { title: d.title, author: d.author_name || "" } : {};
+  }
+  const d = await fetchJSON("https://api.microlink.io/?url=" + encodeURIComponent(url));
+  if (d && d.status === "success" && d.data) {
+    return { title: d.data.title || "", author: d.data.publisher || d.data.author || "", thumb: d.data.image?.url || d.data.screenshot?.url || "", desc: d.data.description || "" };
+  }
+  return {};
+}
+async function enrich(id) {
+  const l = state.links.get(id); if (!l) return;
+  const m = await fetchMeta(l.url);
+  const cur = state.links.get(id); if (!cur) return;
+  const next = { ...cur };
+  if (m.title && (!cur.title || cur.titleAuto)) { next.title = m.title; next.titleAuto = false; }
+  if (m.author) next.author = m.author;
+  if (m.thumb && !cur.thumb) next.thumb = m.thumb;
+  if (m.desc && !cur.desc) next.desc = m.desc.slice(0, 300);
+  next.metaDone = true;
+  await put("links", next);
+}
+
+/* ---------- groups helpers ---------- */
+const kids = pid => [...state.groups.values()].filter(g => (g.parentId || null) === pid).sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+function descendants(gid) { const out = []; const walk = id => kids(id).forEach(g => { out.push(g.id); walk(g.id); }); walk(gid); return out; }
+function pathOf(gid) { const p = []; let g = state.groups.get(gid); let guard = 0; while (g && guard++ < 50) { p.unshift(g); g = state.groups.get(g.parentId); } return p; }
+const pathText = gid => pathOf(gid).map(g => g.name).join(" › ");
+function groupOptions(selected, { exclude = [], noneLabel = "📥 Unsorted (no group)" } = {}) {
+  let html = `<option value="">${noneLabel}</option>`;
+  const walk = (pid, d) => kids(pid).forEach(g => {
+    if (exclude.includes(g.id)) return;
+    html += `<option value="${g.id}" ${g.id === selected ? "selected" : ""}>${"   ".repeat(d)}${esc(g.icon || "📁")} ${esc(g.name)}</option>`;
+    walk(g.id, d + 1);
+  });
+  walk(null, 0);
+  return html;
+}
+
+/* ---------- rendering ---------- */
+function counts() {
+  const direct = new Map(); let uns = 0, fav = 0, fresh = 0;
+  for (const l of state.links.values()) {
+    if (l.groupId && state.groups.has(l.groupId)) direct.set(l.groupId, (direct.get(l.groupId) || 0) + 1); else uns++;
+    if (l.fav) fav++; if (!l.opened) fresh++;
+  }
+  const deep = gid => (direct.get(gid) || 0) + kids(gid).reduce((s, g) => s + deep(g.id), 0);
+  return { direct, deep, uns, fav, fresh };
+}
+function render() {
+  const c = counts();
+  const v = ["all", "unsorted", "fav", "unwatched"].includes(prefs.view) || state.groups.has(prefs.view) ? prefs.view : "all";
+  $("#cAll").textContent = state.links.size; $("#cUns").textContent = c.uns || ""; $("#cFav").textContent = c.fav || ""; $("#cNew").textContent = c.fresh || "";
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("sel", b.dataset.view === v && !query));
+
+  // tree
+  const tree = (pid, d) => kids(pid).map(g => {
+    const ch = kids(g.id), open = !collapsed.has(g.id);
+    return `<div class="row ${g.id === v && !query ? "sel" : ""}" data-group="${g.id}" draggable="true" style="--d:${d}" role="button" tabindex="0">
+      <span class="tw ${open ? "open" : ""}" data-toggle="${g.id}">${ch.length ? "▶" : ""}</span>
+      <span class="ic">${esc(g.icon || "📁")}</span><span class="nm">${esc(g.name)}</span>
+      <span class="n">${c.deep(g.id) || ""}</span>
+      <button class="act" data-addsub="${g.id}" title="Add subgroup">＋</button><button class="act" data-editgroup="${g.id}" title="Rename / move / delete">⋯</button>
+    </div>${ch.length && open ? tree(g.id, d + 1) : ""}`;
+  }).join("");
+  $("#tree").innerHTML = tree(null, 0) || `<p style="margin:4px 8px;font-size:13px;color:var(--muted)">No groups yet. Make one to start organising — e.g. “Music”, then “Music › Lo-fi”.</p>`;
+
+  // titles
+  const isGroup = state.groups.has(v);
+  const crumbs = isGroup ? pathOf(v).slice(0, -1) : [];
+  $("#crumbs").innerHTML = query ? "Search" : crumbs.length ? crumbs.map(g => `<button data-goto="${g.id}">${esc(g.icon || "📁")} ${esc(g.name)}</button><span>›</span>`).join("") : isGroup ? "Group" : "Library";
+  const g = state.groups.get(v);
+  $("#title").textContent = query ? `“${query}”` : isGroup ? `${g.icon || "📁"} ${g.name}` : { all: "All links", unsorted: "Unsorted", fav: "Favorites", unwatched: "Not opened yet" }[v];
+  $("#quickHelp").innerHTML = `New links go into <b>${isGroup && !query ? esc(pathText(v)) : "Unsorted"}</b>. Paste to add instantly · drag cards onto a group in the sidebar to move them.`;
+
+  // folders (subgroups)
+  const subs = isGroup && !query ? kids(v) : [];
+  $("#folderWrap").hidden = !subs.length;
+  $("#folders").innerHTML = subs.map(s => {
+    const inside = [s.id, ...descendants(s.id)];
+    const thumbs = [...state.links.values()].filter(l => inside.includes(l.groupId)).sort((a, b) => b.addedAt - a.addedAt).map(thumbOf).filter(Boolean).slice(0, 4);
+    const mos = thumbs.length ? `<div class="mosaic">${[0, 1, 2, 3].map(i => thumbs[i] ? `<img src="${esc(thumbs[i])}" alt="" loading="lazy">` : "<span></span>").join("")}</div>` : `<div class="mosaic empty">${esc(s.icon || "📁")}</div>`;
+    return `<button class="folder" data-goto="${s.id}" data-group-drop="${s.id}">${mos}<div class="fm"><span>${esc(s.icon || "📁")} ${esc(s.name)}</span><span class="n">${c.deep(s.id)}</span></div></button>`;
+  }).join("");
+
+  // links
+  let list = [...state.links.values()];
+  const deepOn = isGroup && prefs.deep;
+  $("#deepWrap").hidden = !(isGroup && !query && descendants(v).length);
+  $("#deep").checked = prefs.deep;
+  if (query) {
+    const q = query.toLowerCase();
+    list = list.filter(l => [l.title, l.url, l.note, l.author, (l.tags || []).join(" "), l.groupId ? pathText(l.groupId) : ""].join(" ").toLowerCase().includes(q));
+  } else if (isGroup) {
+    const set = new Set(deepOn ? [v, ...descendants(v)] : [v]);
+    list = list.filter(l => set.has(l.groupId));
+  } else if (v === "unsorted") list = list.filter(l => !l.groupId || !state.groups.has(l.groupId));
+  else if (v === "fav") list = list.filter(l => l.fav);
+  else if (v === "unwatched") list = list.filter(l => !l.opened);
+
+  const s = prefs.sort;
+  list.sort(s === "old" ? (a, b) => a.addedAt - b.addedAt : s === "az" ? (a, b) => (a.title || "").localeCompare(b.title || "") : s === "site" ? (a, b) => hostOf(a.url).localeCompare(hostOf(b.url)) || b.addedAt - a.addedAt : (a, b) => b.addedAt - a.addedAt);
+  visibleIds = list.map(l => l.id);
+  $("#linksLabelText").textContent = `${list.length} link${list.length === 1 ? "" : "s"}`;
+  const showPath = query || !isGroup || deepOn;
+  const grid = $("#grid");
+  grid.classList.toggle("list", prefs.layout === "list");
+  $("#vGrid").classList.toggle("on", prefs.layout !== "list"); $("#vList").classList.toggle("on", prefs.layout === "list");
+  grid.innerHTML = list.map(l => card(l, showPath)).join("");
+
+  const empty = $("#empty");
+  empty.hidden = list.length > 0 || (subs.length > 0 && !query);
+  empty.innerHTML = query ? `<h2>Nothing matches</h2><p>Try a different word — search looks at titles, notes, tags, sites and group names.</p>`
+    : state.links.size === 0 ? `<h2>Your shelf is empty</h2><p>Paste a YouTube link (or any link) in the box above.<br>Coming from Quiet Reel? Use <b>Import</b> at the bottom of the sidebar.</p>`
+    : `<h2>No links here yet</h2><p>Paste a link above and it lands right here, or drag cards in from another group.</p>`;
+}
+function card(l, showPath) {
+  const t = thumbOf(l), yt = ytId(l.url), host = hostOf(l.url);
+  const ph = `<span class="ph"><img src="${esc(favicon(l.url))}" alt="">${esc(host)}</span>`;
+  const img = t ? `<img class="cover" src="${esc(t)}" alt="" loading="lazy" onload="if(this.naturalWidth===120&&this.src.includes('ytimg'))this.onerror()" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'ph',innerHTML:this.dataset.ph}))" data-ph="${esc(`<img src='${favicon(l.url)}' alt=''>${esc(host)}`)}">` : ph;
+  const path = showPath && l.groupId && state.groups.has(l.groupId) ? `<div class="path">${esc(pathText(l.groupId))}</div>` : "";
+  return `<article class="card" draggable="true" data-id="${l.id}">
+    <a class="thumb" href="${esc(l.url)}" target="_blank" rel="noopener" data-open="${l.id}">${img}${yt ? `<span class="play">▶ Play</span>` : `<span class="play">↗ ${esc(host)}</span>`}${l.opened ? `<span class="seen">✓ Opened</span>` : ""}</a>
+    <div class="meta">
+      <h3 title="${esc(l.title)}">${esc(l.title || host)}</h3>
+      <div class="sub"><img src="${esc(favicon(l.url))}" alt="" loading="lazy"><span>${esc(l.author ? l.author + " · " + host : host)}</span></div>
+      ${path}
+      ${l.note ? `<p class="note">${esc(l.note)}</p>` : ""}
+      ${l.tags?.length ? `<div class="tags">${l.tags.map(t => `<span class="tag" data-tag="${esc(t)}">#${esc(t)}</span>`).join("")}</div>` : ""}
+    </div>
+    <div class="acts">
+      <button data-fav="${l.id}" class="${l.fav ? "on" : ""}" title="Favorite">${l.fav ? "★" : "☆"}</button>
+      <button data-seen="${l.id}" class="${l.opened ? "on" : ""}" title="Mark opened / not opened">✓</button>
+      <span class="spacer"></span>
+      <button data-copy="${l.id}" title="Copy link">Copy</button>
+      <button data-edit="${l.id}">Edit</button>
+    </div>
+  </article>`;
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(text, kind) { const t = $("#toast"); t.textContent = text; t.className = "toast" + (kind ? " " + kind : ""); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3400); }
+
+/* ---------- adding ---------- */
+async function addText(text, groupId) {
+  const urls = extractUrls(text);
+  if (!urls.length) { toast("That doesn't look like a link. Copy it from the address bar or the Share button.", "err"); return 0; }
+  const existing = new Map([...state.links.values()].map(l => [canonical(l.url), l]));
+  const now = Date.now(); const added = []; const dupes = [];
+  urls.forEach((url, i) => {
+    const key = canonical(url);
+    if (existing.has(key)) { dupes.push(existing.get(key)); return; }
+    const yt = ytId(url);
+    const l = { id: uid(), url: yt ? "https://www.youtube.com/watch?v=" + yt + (url.includes("/shorts/") ? "" : "") : url, title: yt ? "YouTube video" : hostOf(url), titleAuto: true, groupId: groupId || null, addedAt: now + (urls.length - i), note: "", tags: [], fav: false, opened: false };
+    existing.set(key, l); added.push(l);
+  });
+  if (added.length) await putMany(added.map(l => ["links", l]));
+  const msg = [];
+  if (added.length) msg.push(`Added ${added.length} link${added.length > 1 ? "s" : ""}.`);
+  if (dupes.length) msg.push(dupes.length === 1 ? `Already saved${dupes[0].groupId ? " in " + pathText(dupes[0].groupId) : ""}.` : `${dupes.length} were already saved.`);
+  toast(msg.join(" "));
+  [...added, ...dupes].forEach(l => setTimeout(() => { const el = document.querySelector(`.card[data-id="${l.id}"]`); if (el) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 2500); } }, 50));
+  // fetch titles/thumbnails a few at a time
+  const queue = [...added]; const worker = async () => { while (queue.length) await enrich(queue.shift().id); };
+  Promise.all([worker(), worker(), worker()]);
+  return added.length;
+}
+const currentGroup = () => (state.groups.has(prefs.view) && !query ? prefs.view : null);
+$("#quick").addEventListener("submit", e => { e.preventDefault(); const v = $("#quickInput").value; if (!v.trim()) return; addText(v, currentGroup()); $("#quickInput").value = ""; });
+$("#quickInput").addEventListener("paste", e => {
+  const text = e.clipboardData?.getData("text") || "";
+  if (extractUrls(text).length && /https?:\/\//i.test(text)) { e.preventDefault(); addText(text, currentGroup()); }
+});
+
+/* ---------- navigation ---------- */
+function go(view) { prefs.view = view; query = ""; $("#search").value = ""; savePrefs(); render(); document.body.classList.remove("side-open"); window.scrollTo({ top: 0 }); }
+$("#nav").addEventListener("click", e => { const b = e.target.closest("[data-view]"); if (b) go(b.dataset.view); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-goto]"); if (b) go(b.dataset.goto); });
+$("#search").addEventListener("input", e => { query = e.target.value.trim(); render(); });
+$("#sort").addEventListener("change", e => { prefs.sort = e.target.value; savePrefs(); render(); });
+$("#vGrid").onclick = () => { prefs.layout = "grid"; savePrefs(); render(); };
+$("#vList").onclick = () => { prefs.layout = "list"; savePrefs(); render(); };
+$("#deep").onchange = e => { prefs.deep = e.target.checked; savePrefs(); render(); };
+$("#menuBtn").onclick = () => document.body.classList.add("side-open");
+$("#scrim").onclick = () => document.body.classList.remove("side-open");
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $("#search").focus(); }
+  if (!$("#player").hidden) { if (e.key === "Escape") closePlayer(); if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); }
+});
+
+/* ---------- tree interactions ---------- */
+$("#tree").addEventListener("click", e => {
+  const t = e.target;
+  if (t.closest("[data-addsub]")) { e.stopPropagation(); return openGroupDlg(null, t.closest("[data-addsub]").dataset.addsub); }
+  if (t.closest("[data-editgroup]")) { e.stopPropagation(); return openGroupDlg(t.closest("[data-editgroup]").dataset.editgroup); }
+  if (t.closest("[data-toggle]") && t.closest("[data-toggle]").textContent) { const id = t.closest("[data-toggle]").dataset.toggle; collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id); savePrefs(); return render(); }
+  const row = t.closest("[data-group]"); if (row) go(row.dataset.group);
+});
+$("#tree").addEventListener("keydown", e => { const row = e.target.closest(".row"); if (row && e.key === "Enter" && e.target === row) go(row.dataset.group); });
+$("#newGroup").onclick = () => openGroupDlg(null, null);
+
+/* ---------- group dialog ---------- */
+let editingGroup = null, newParent = null;
+function openGroupDlg(id, parentId) {
+  editingGroup = id; const g = id ? state.groups.get(id) : null;
+  newParent = g ? g.parentId || null : parentId;
+  $("#gdHead").textContent = g ? "Edit group" : parentId ? "New subgroup" : "New group";
+  $("#gdName").value = g?.name || ""; $("#gdIcon").value = g?.icon || "";
+  $("#gdParent").innerHTML = groupOptions(newParent, { exclude: id ? [id, ...descendants(id)] : [], noneLabel: "— Top level —" });
+  $("#gdDelete").hidden = !g;
+  $("#groupDlg").showModal(); setTimeout(() => $("#gdName").focus(), 30);
+}
+$("#groupForm").addEventListener("submit", async e => {
+  if (e.submitter?.value !== "ok") return;
+  const name = $("#gdName").value.trim(); if (!name) return;
+  const base = editingGroup ? state.groups.get(editingGroup) : { id: uid(), createdAt: Date.now(), order: Date.now() };
+  const g = { ...base, name, icon: $("#gdIcon").value.trim(), parentId: $("#gdParent").value || null };
+  await put("groups", g);
+  if (g.parentId) { collapsed.delete(g.parentId); savePrefs(); render(); }
+  if (!editingGroup) toast(`Created “${name}”.`);
+});
+$("#gdDelete").onclick = async () => {
+  const g = state.groups.get(editingGroup); if (!g) return;
+  const subs = descendants(g.id).length; const n = [...state.links.values()].filter(l => l.groupId === g.id).length;
+  if (!confirm(`Delete “${g.name}”?\n\nIts ${n} link(s) and ${kids(g.id).length} subgroup(s) will move up to ${g.parentId ? "“" + state.groups.get(g.parentId)?.name + "”" : "Unsorted / top level"}. No links are deleted.`)) return;
+  const up = g.parentId || null; const items = [];
+  for (const l of state.links.values()) if (l.groupId === g.id) items.push(["links", { ...l, groupId: up }]);
+  for (const k of kids(g.id)) items.push(["groups", { ...k, parentId: up }]);
+  items.push(["groups", g, true]);
+  if (prefs.view === g.id) prefs.view = up || "all";
+  $("#groupDlg").close("cancel");
+  await putMany(items);
+  toast(`Deleted group “${g.name}”.` + (subs ? "" : ""));
+};
+
+/* ---------- card interactions ---------- */
+$("#grid").addEventListener("click", async e => {
+  const t = e.target;
+  const open = t.closest("[data-open]");
+  if (open) {
+    const l = state.links.get(open.dataset.open);
+    if (ytId(l.url)) { e.preventDefault(); openPlayer(l.id); }
+    if (!l.opened) put("links", { ...l, opened: true, openedAt: Date.now() });
+    return;
+  }
+  const b = t.closest("button"); if (!b) { const tag = t.closest("[data-tag]"); if (tag) { $("#search").value = tag.dataset.tag; query = tag.dataset.tag; render(); } return; }
+  if (b.dataset.fav) { const l = state.links.get(b.dataset.fav); put("links", { ...l, fav: !l.fav }); }
+  if (b.dataset.seen) { const l = state.links.get(b.dataset.seen); put("links", { ...l, opened: !l.opened }); }
+  if (b.dataset.copy) { try { await navigator.clipboard.writeText(state.links.get(b.dataset.copy).url); toast("Link copied."); } catch { toast("Couldn't copy.", "err"); } }
+  if (b.dataset.edit) openLinkDlg(b.dataset.edit);
+});
+
+/* ---------- link dialog ---------- */
+let editingLink = null;
+function openLinkDlg(id) {
+  const l = state.links.get(id); if (!l) return; editingLink = id;
+  $("#ldTitle").value = l.title || ""; $("#ldUrl").value = l.url; $("#ldNote").value = l.note || "";
+  $("#ldTags").value = (l.tags || []).join(", "); $("#ldThumbUrl").value = l.thumb || "";
+  $("#ldGroup").innerHTML = groupOptions(l.groupId || "");
+  const t = thumbOf(l); $("#ldThumb").innerHTML = t ? `<img src="${esc(t)}" alt="">` : ""; $("#ldThumb").hidden = !t;
+  $("#linkDlg").showModal();
+}
+$("#ldThumbUrl").addEventListener("input", e => { const v = e.target.value.trim(); const l = state.links.get(editingLink); const t = v || (l && ytId($("#ldUrl").value) ? `https://i.ytimg.com/vi/${ytId($("#ldUrl").value)}/hqdefault.jpg` : ""); $("#ldThumb").innerHTML = t ? `<img src="${esc(t)}" alt="">` : ""; $("#ldThumb").hidden = !t; });
+$("#linkForm").addEventListener("submit", async e => {
+  if (e.submitter?.value !== "ok") return;
+  const l = state.links.get(editingLink); if (!l) return;
+  const url = $("#ldUrl").value.trim(); const title = $("#ldTitle").value.trim();
+  const next = { ...l, url, title, titleAuto: title === l.title ? l.titleAuto : false, note: $("#ldNote").value.trim(), tags: $("#ldTags").value.split(",").map(s => s.trim().replace(/^#/, "")).filter(Boolean), groupId: $("#ldGroup").value || null, thumb: $("#ldThumbUrl").value.trim() };
+  await put("links", next);
+  if (url !== l.url) enrich(l.id);
+  toast("Saved.");
+});
+$("#ldDelete").onclick = async () => {
+  const l = state.links.get(editingLink); if (!l) return;
+  if (!confirm(`Delete “${l.title}”? This removes it from your shelf.`)) return;
+  $("#linkDlg").close("cancel"); await del("links", l.id); toast("Deleted.");
+};
+$("#ldRefresh").onclick = async () => {
+  const l = state.links.get(editingLink); if (!l) return;
+  await put("links", { ...l, titleAuto: true, thumb: ytId(l.url) ? l.thumb : "" });
+  $("#linkDlg").close("cancel"); toast("Fetching title and thumbnail…"); await enrich(l.id);
+};
+
+/* ---------- drag & drop: move links / nest groups ---------- */
+let drag = null;
+document.addEventListener("dragstart", e => {
+  const c = e.target.closest?.(".card"); const r = e.target.closest?.(".row[data-group]");
+  if (c) { drag = { kind: "link", id: c.dataset.id }; c.classList.add("dragging"); }
+  else if (r) { drag = { kind: "group", id: r.dataset.group }; document.body.classList.add("dragging-group"); }
+  else return;
+  e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", drag.id);
+});
+document.addEventListener("dragend", () => { drag = null; document.querySelectorAll(".dragging,.drop-ok").forEach(el => el.classList.remove("dragging", "drop-ok")); document.body.classList.remove("dragging-group"); });
+function dropTarget(e) { return e.target.closest?.("[data-group], [data-group-drop], #rootDrop, #nav [data-view='unsorted']"); }
+function validDrop(el) {
+  if (!drag || !el) return false;
+  const gid = el.dataset.group || el.dataset.groupDrop || null;
+  if (drag.kind === "group") { if (el.id === "rootDrop") return true; if (!gid) return false; return gid !== drag.id && !descendants(drag.id).includes(gid); }
+  return true;
+}
+document.addEventListener("dragover", e => { const el = dropTarget(e); if (validDrop(el)) { e.preventDefault(); document.querySelectorAll(".drop-ok").forEach(x => x !== el && x.classList.remove("drop-ok")); el.classList.add("drop-ok"); } });
+document.addEventListener("dragleave", e => { const el = dropTarget(e); if (el && !el.contains(e.relatedTarget)) el.classList.remove("drop-ok"); });
+document.addEventListener("drop", async e => {
+  const el = dropTarget(e); if (!validDrop(el)) return; e.preventDefault();
+  const gid = el.dataset.group || el.dataset.groupDrop || null;
+  if (drag.kind === "link") {
+    const l = state.links.get(drag.id); if (l && (l.groupId || null) !== gid) { await put("links", { ...l, groupId: gid }); toast(`Moved to ${gid ? pathText(gid) : "Unsorted"}.`); }
+  } else {
+    const g = state.groups.get(drag.id); if (g) { await put("groups", { ...g, parentId: gid }); if (gid) collapsed.delete(gid); savePrefs(); render(); toast(gid ? `“${g.name}” is now inside ${pathText(gid)}.` : `“${g.name}” is now a top-level group.`); }
+  }
+});
+
+/* ---------- player ---------- */
+let playing = null;
+function openPlayer(id) {
+  const l = state.links.get(id); const yt = ytId(l?.url); if (!yt) return;
+  playing = id;
+  $("#plTitle").textContent = l.title; $("#plOpen").href = l.url;
+  $("#plFrame").src = `https://www.youtube-nocookie.com/embed/${yt}?autoplay=1&rel=0`;
+  $("#player").hidden = false; document.body.style.overflow = "hidden";
+  const ytList = visibleIds.filter(i => ytId(state.links.get(i)?.url));
+  const i = ytList.indexOf(id); $("#plPrev").disabled = i <= 0; $("#plNext").disabled = i < 0 || i >= ytList.length - 1;
+}
+function step(d) {
+  const ytList = visibleIds.filter(i => ytId(state.links.get(i)?.url)); const i = ytList.indexOf(playing);
+  const next = ytList[i + d]; if (!next) return;
+  const l = state.links.get(next); if (!l.opened) put("links", { ...l, opened: true, openedAt: Date.now() });
+  openPlayer(next);
+}
+function closePlayer() { $("#player").hidden = true; $("#plFrame").src = "about:blank"; document.body.style.overflow = ""; playing = null; }
+$("#plClose").onclick = closePlayer; $("#plPrev").onclick = () => step(-1); $("#plNext").onclick = () => step(1);
+
+/* ---------- import / export ---------- */
+$("#importBtn").onclick = () => { $("#imText").value = ""; $("#imFile").value = ""; $("#imGroup").innerHTML = groupOptions(currentGroup() || ""); $("#importDlg").showModal(); };
+$("#imFile").onchange = async e => { const f = e.target.files[0]; if (f) $("#imText").value = await f.text(); };
+$("#importForm").addEventListener("submit", async e => {
+  if (e.submitter?.value !== "ok") return;
+  const text = $("#imText").value.trim(); if (!text) return;
+  const target = $("#imGroup").value || null;
+  let data = null; try { data = JSON.parse(text); } catch {}
+  if (data && typeof data === "string") { try { data = JSON.parse(data); } catch {} }
+  if (data && Array.isArray(data.links)) { // Linkshelf backup
+    const have = new Set([...state.links.values()].map(l => canonical(l.url)));
+    const items = [];
+    (data.groups || []).forEach(g => { if (g && g.id && g.name) items.push(["groups", g]); });
+    let n = 0; (data.links || []).forEach(l => { if (l && l.id && l.url && !have.has(canonical(l.url))) { items.push(["links", l]); n++; } });
+    await putMany(items); toast(`Imported ${n} link(s) and ${(data.groups || []).length} group(s).`); return;
+  }
+  if (data && Array.isArray(data.videos)) { // Quiet Reel data
+    const have = new Set([...state.links.values()].map(l => canonical(l.url)));
+    const now = Date.now(); const items = [];
+    data.videos.forEach((v, i) => {
+      const id = v.id || ytId(v.url || ""); if (!id || have.has("yt:" + id)) return;
+      items.push(["links", { id: uid(), url: "https://www.youtube.com/watch?v=" + id, title: v.title || "YouTube video", titleAuto: !v.title, groupId: target, addedAt: v.addedAt || v.added || now - i, note: "", tags: [], fav: false, opened: !!(v.seen || v.watched) }]);
+      have.add("yt:" + id);
+    });
+    await putMany(items); toast(`Imported ${items.length} video(s) from Quiet Reel.`);
+    items.filter(([, l]) => l.titleAuto).forEach(([, l]) => enrich(l.id)); return;
+  }
+  await addText(text, target);
+});
+$("#exportBtn").onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: "linkshelf", exportedAt: new Date().toISOString(), groups: [...state.groups.values()], links: [...state.links.values()] }, null, 2)], { type: "application/json" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `linkshelf-backup-${new Date().toISOString().slice(0, 10)}.json` });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+
+/* ---------- theme ---------- */
+function applyTheme() { if (prefs.theme) document.documentElement.dataset.theme = prefs.theme; else delete document.documentElement.dataset.theme; }
+$("#themeBtn").onclick = () => {
+  const dark = prefs.theme ? prefs.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  prefs.theme = dark ? "light" : "dark"; savePrefs(); applyTheme();
+};
+
+/* ---------- account / cloud sync ---------- */
+function renderAcct(status) {
+  const a = $("#acct"); const b = $("#banner");
+  if (!FIREBASE_CONFIG) {
+    a.innerHTML = `<span class="dot"></span><span class="who">Saved in this browser only</span>`;
+    b.innerHTML = ""; return;
+  }
+  if (status === "loading") { a.innerHTML = `<span class="dot"></span><span class="who">Connecting…</span>`; return; }
+  if (mode === "cloud") {
+    const u = cloud.user;
+    a.innerHTML = `${u.photoURL ? `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">` : `<span class="dot on"></span>`}<span class="who" title="${esc(u.email || "")}">${esc(u.displayName || u.email || "Signed in")}</span><button class="ghost" id="signOut" style="padding:4px 8px;font-size:12px">Sign out</button>`;
+    b.innerHTML = "";
+    $("#signOut").onclick = () => cloud.auth.signOut(cloud.authObj);
+  } else {
+    a.innerHTML = `<span class="dot"></span><span class="who">Not signed in</span><button class="primary" id="signIn" style="padding:5px 10px;font-size:12px">Sign in</button>`;
+    b.innerHTML = `<div class="banner"><p><b>Sign in with Google</b> to keep your links in your cloud database and see them on every device. Until then, links are saved in this browser only.</p><button class="primary" id="signIn2">Sign in with Google</button></div>`;
+    $("#signIn").onclick = $("#signIn2").onclick = signIn;
+  }
+}
+let fb = null;
+async function signIn() {
+  try { await fb.auth.signInWithPopup(fb.authObj, new fb.auth.GoogleAuthProvider()); }
+  catch (e) {
+    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") return fb.auth.signInWithRedirect(fb.authObj, new fb.auth.GoogleAuthProvider());
+    if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") toast("Sign-in failed: " + (e.code === "auth/unauthorized-domain" ? "add this site's domain in Firebase → Authentication → Settings → Authorized domains." : e.message), "err");
+  }
+}
+async function initCloud() {
+  renderAcct("loading");
+  const V = "10.14.1";
+  try {
+    const [app, auth, fs] = await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`),
+      import(`https://www.gstatic.com/firebasejs/${V}/firebase-firestore.js`),
+    ]);
+    const fapp = app.initializeApp(FIREBASE_CONFIG);
+    let db;
+    try { db = fs.initializeFirestore(fapp, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
+    catch { db = fs.getFirestore(fapp); }
+    const authObj = auth.getAuth(fapp);
+    fb = { auth, authObj, fs, db };
+    let unsubs = [];
+    auth.onAuthStateChanged(authObj, user => {
+      unsubs.forEach(u => u()); unsubs = [];
+      if (!user) { mode = "local"; cloud = null; loadLocal(); render(); renderAcct(); return; }
+      mode = "cloud"; cloud = { ...fb, user };
+      state.groups = new Map(); state.links = new Map();
+      renderAcct(); render();
+      let first = { groups: true, links: true }, checked = false;
+      const sub = kind => fs.onSnapshot(fs.collection(db, "users", user.uid, kind), snap => {
+        state[kind] = new Map(snap.docs.map(d => [d.id, d.data()]));
+        first[kind] = false; render();
+        if (!checked && !first.groups && !first.links) { checked = true; offerUpload(); }
+      }, err => toast("Database error: " + err.message, "err"));
+      unsubs = [sub("groups"), sub("links")];
+    });
+  } catch (e) {
+    console.error(e); toast("Couldn't reach the cloud database — working in this browser only.", "err");
+    mode = "local"; renderAcct();
+  }
+}
+async function offerUpload() {
+  const local = readJSON(LOCAL_KEY);
+  const n = local?.links?.length || 0; if (!n || local.uploadedTo === cloud.user.uid) return;
+  const ok = confirm(`You have ${n} link(s) saved in this browser from before you signed in.\n\nCopy them into your cloud account now? (Duplicates are skipped.)`);
+  local.uploadedTo = cloud.user.uid; writeJSON(LOCAL_KEY, local);
+  if (!ok) return;
+  const have = new Set([...state.links.values()].map(l => canonical(l.url)));
+  const items = [];
+  (local.groups || []).forEach(g => { if (!state.groups.has(g.id)) items.push(["groups", g]); });
+  (local.links || []).forEach(l => { if (!have.has(canonical(l.url))) items.push(["links", l]); });
+  await putMany(items); toast(`Copied ${items.filter(i => i[0] === "links").length} link(s) to the cloud.`);
+}
+
+/* ---------- start ---------- */
+applyTheme();
+$("#sort").value = prefs.sort;
+loadLocal(); render(); renderAcct();
+if (FIREBASE_CONFIG) initCloud();
+// fill in any links still missing titles (e.g. added while offline)
+setTimeout(() => { if (mode === "local") [...state.links.values()].filter(l => l.titleAuto && !l.metaDone).slice(0, 20).forEach(l => enrich(l.id)); }, 1500);
+</script>
+</body>
+</html>
